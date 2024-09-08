@@ -765,4 +765,17 @@ export function initialize(): void {
             return false;
         },
     });
+
+    tippy.delegate("body", {
+        target: ".view_invitations",
+        delay: LONG_HOVER_DELAY,
+        content: $t({
+            defaultMessage: "View Details",
+        }),
+        placement: "bottom",
+        appendTo: () => document.body,
+        onHidden(instance) {
+            instance.destroy();
+        },
+    });
 }
