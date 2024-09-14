@@ -4,7 +4,7 @@ import {z} from "zod";
 import render_settings_resend_invite_modal from "../templates/confirm_dialog/confirm_resend_invite.hbs";
 import render_settings_revoke_invite_modal from "../templates/confirm_dialog/confirm_revoke_invite.hbs";
 import render_admin_invites_list from "../templates/settings/admin_invites_list.hbs";
-import render_view_invitaion_modal from "../templates/settings/view_invitation_modal.hbs"
+import render_view_invitaion_modal from "../templates/settings/view_invitation_modal.hbs";
 
 import * as blueslip from "./blueslip";
 import * as channel from "./channel";
@@ -16,7 +16,7 @@ import * as people from "./people";
 import * as settings_config from "./settings_config";
 import * as settings_data from "./settings_data";
 import {current_user, realm} from "./state_data";
-import { stream_schema } from "./stream_types";
+import {stream_schema} from "./stream_types";
 import * as timerender from "./timerender";
 import * as ui_report from "./ui_report";
 import * as util from "./util";
@@ -54,7 +54,7 @@ const extended_invite_schema = z.intersection(
         img_src: z.string().url().optional(),
         notify_referrer_on_join: z.boolean().optional(),
         streams: z.array(stream_schema).optional(),
-    })
+    }),
 );
 
 type Invite = z.infer<typeof extended_invite_schema>;
@@ -161,8 +161,13 @@ function populate_invites(invites_data: {invites: Invite[]}): void {
     loading.destroy_indicator($("#admin_page_invites_loading_indicator"));
 }
 
-function get_invite_details({invite_id,is_multiuse}:{invite_id: string,is_multiuse:string}): void {
-
+function get_invite_details({
+    invite_id,
+    is_multiuse,
+}: {
+    invite_id: string;
+    is_multiuse: string;
+}): void {
     let url = "/json/invites/" + invite_id;
 
     if (is_multiuse === "true") {
@@ -180,7 +185,7 @@ function get_invite_details({invite_id,is_multiuse}:{invite_id: string,is_multiu
     });
 }
 
-function open_invite_details_modal(invite: Invite):void{
+function open_invite_details_modal(invite: Invite): void {
     const ctx = {
         is_multiuse: invite.is_multiuse,
         email: invite.is_multiuse ? invite.link_url : invite.email,
@@ -196,24 +201,22 @@ function open_invite_details_modal(invite: Invite):void{
         expires_at: invite.expiry_date_absolute_time,
         invited_as: invite.invited_as,
         streams: invite.streams,
-        };
-        
-    
+    };
+
     const html_body = render_view_invitaion_modal(ctx);
     const $modal = $(html_body);
-    $('body').append($modal);
+    $("body").append($modal);
 
-    $modal.find(".modal__close").on('click', () => {
+    $modal.find(".modal__close").on("click", () => {
         $modal.remove();
-    })
-    
-    $(document).on('click',(e)=>{
-        if($(e.target).hasClass("modal__overlay")){
+    });
+
+    $(document).on("click", (e) => {
+        if ($(e.target).hasClass("modal__overlay")) {
             $modal.remove();
         }
-    })
+    });
 }
-
 
 function do_revoke_invite({
     $row,
@@ -362,15 +365,15 @@ export function on_load_success(
         $(".dialog_submit_button").attr("data-invite-id", invite_id);
     });
 
-    $(".admin_invites_table").on("click", ".view_invitations", function (this: HTMLElement,e) {
+    $(".admin_invites_table").on("click", ".view_invitations", function (this: HTMLElement, e) {
         e.preventDefault();
         e.stopPropagation();
-        
-        const invite_id = $(this).attr("data-invite-id")!;
-        const is_multiuse = $(this).attr("data-is-multiuse")!;;
 
-        get_invite_details({invite_id,is_multiuse});
-    })
+        const invite_id = $(this).attr("data-invite-id")!;
+        const is_multiuse = $(this).attr("data-is-multiuse")!;
+
+        get_invite_details({invite_id, is_multiuse});
+    });
 }
 
 export function update_invite_users_setting_tip(): void {

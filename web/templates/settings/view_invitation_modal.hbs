@@ -16,10 +16,12 @@
                                     {{#if is_multiuse}}
                                     <div id="email" class="default-field"></div>
                                         <div class="name">{{t "Email" }}</div>
-                                        <div class="value"><a href="{{link_url}}" target="_blank" rel="noopener noreferrer">
-                {{t 'Invite link'}}
-            </a></div>
-                                    </div> 
+                                        <div class="value">
+                                            <a href="{{link_url}}" target="_blank" rel="noopener noreferrer">
+                                                {{t 'Invite link'}}
+                                            </a>
+                                            </div>
+                                        </div> 
                                     {{else}}
                                     <div id="email" class="default-field">
                                         <div class="name">{{t "Email" }}</div>
