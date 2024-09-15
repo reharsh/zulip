@@ -373,10 +373,11 @@ def get_invite_controlled_by_user(
     """
     invitee = prereg_user
     if invitee.include_realm_default_subscriptions:
-        stream_ids = list(get_default_stream_ids_for_realm(user_profile.realm.id))
+        stream_ids = list(get_default_stream_ids_for_realm(user_profile.realm))
     else:
         stream_ids = list(invitee.streams.values_list("id", flat=True))
 
+    assert invitee.referred_by is not None
     invite = dict(
         email=invitee.email,
         invited_by_user_id=invitee.referred_by.id,
@@ -400,20 +401,21 @@ def get_multiuse_invite_controlled_by_user(
     can control also invitations that they did not themselves create.
     """
     invite_id = invite.id
-    confirmation_obj = Confirmation.objects.get(
+    confirmation_obj = Confirmation.objects.filter(
         type=Confirmation.MULTIUSE_INVITE,
         object_id__in=[invite_id],
-    )
+    ).first()
+    assert confirmation_obj is not None
 
     if invite.include_realm_default_subscriptions:
-        stream_ids = list(get_default_stream_ids_for_realm(user_profile.realm.id))
+        stream_ids = list(get_default_stream_ids_for_realm(user_profile.realm))
     else:
         stream_ids = list(invite.streams.values_list("id", flat=True))
 
     invite_confirmation_obj = confirmation_obj.content_object
     assert invite_confirmation_obj is not None
 
-    invite_dict = dict(
+    invite = dict(
         invited_by_user_id=invite_confirmation_obj.referred_by.id,
         invited=datetime_to_timestamp(confirmation_obj.date_sent),
         expiry_date=get_invitation_expiry_date(confirmation_obj),
@@ -423,7 +425,7 @@ def get_multiuse_invite_controlled_by_user(
         is_multiuse=True,
         stream_ids=stream_ids,
     )
-    return invite_dict
+    return invite
 
 
 @transaction.atomic
