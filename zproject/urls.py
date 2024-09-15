@@ -70,8 +70,6 @@ from zerver.views.invite import (
     resend_user_invite_email,
     revoke_multiuse_invite,
     revoke_user_invite,
-    get_invite_details,
-    get_multiuse_invite_details
 )
 from zerver.views.message_edit import (
     delete_message_backend,
