@@ -13210,8 +13210,9 @@ paths:
                       {
                         "result": "success",
                         "msg": "",
-                        "invite": {
-                            email: 'example@zulip.com',
+                        "invite":
+                          {
+                            email: "example@zulip.com",
                             invited_by_user_id: 11,
                             invited: 1726339239,
                             expiry_date: 1727203239,
@@ -13219,8 +13220,8 @@ paths:
                             invited_as: 400,
                             is_multiuse: False,
                             notify_referrer_on_join: True,
-                            stream_ids: [14, 3, 13, 10, 2]
-                        }
+                            stream_ids: [14, 3, 13, 10, 2],
+                          },
                       }
 
   /invites/multiuse/{invite_id}:
@@ -13315,16 +13316,17 @@ paths:
                       {
                         "result": "success",
                         "msg": "",
-                        "invite": {
-                            link_url: 'https://example.zulipchat.com/join/yddhtzk4jgl7rsmazc5fyyyy/',
+                        "invite":
+                          {
+                            link_url: "https://example.zulipchat.com/join/yddhtzk4jgl7rsmazc5fyyyy/",
                             invited_by_user_id: 11,
                             invited: 1726339239,
                             expiry_date: 1727203239,
                             id: 10,
                             invited_as: 400,
                             is_multiuse: True,
-                            stream_ids: [1, 2, 3, 13, 14]
-                        }
+                            stream_ids: [1, 2, 3, 13, 14],
+                          },
                       }
 
   /invites/{invite_id}/resend:
