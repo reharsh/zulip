@@ -13516,7 +13516,7 @@ paths:
       description: |
         Fetch email invitation details also including stream ids associated with that invitation.
 
-        **Changes**: New in Zulip 10.0 (feature level 298), fetching the
+        **Changes**: New in Zulip 10.0 (feature level 300), fetching the
         invite details of email invitation by invite id.
       parameters:
         - name: invite_id
@@ -13621,7 +13621,7 @@ paths:
       description: |
         Get details of reusable invitation link also including stream ids associated with it.
 
-        **Changes**: New in Zulip 10.0 (feature level 298), fetching the
+        **Changes**: New in Zulip 10.0 (feature level 300), fetching the
         details of reusable invitation link by invite id.
       parameters:
         - name: invite_id
