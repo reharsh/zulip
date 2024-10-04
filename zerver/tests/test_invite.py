@@ -1939,9 +1939,9 @@ class InvitationsTestCase(InviteUserBase):
 
         invite_id = do_get_invites_controlled_by_user(user_profile)[0]["id"]
         prereg_user = PreregistrationUser.objects.get(id=invite_id)
-        stream_ids = get_invite_controlled_by_user(prereg_user,user_profile)["stream_ids"]
+        stream_ids = get_invite_controlled_by_user(prereg_user, user_profile)["stream_ids"]
         self.assert_length(stream_ids, 2)
-        
+
     def test_get_multiuse_invite_controlled_by_user(self) -> None:
         user_profile = self.example_user("iago")
 
@@ -1956,12 +1956,14 @@ class InvitationsTestCase(InviteUserBase):
             PreregistrationUser.INVITE_AS["MEMBER"],
             invite_expires_in_minutes,
             include_realm_default_subscriptions=False,
-            streams=streams
+            streams=streams,
         )
 
         invite_id = do_get_invites_controlled_by_user(user_profile)[0]["id"]
         multiuse_invite = MultiuseInvite.objects.get(id=invite_id)
-        stream_ids = get_multiuse_invite_controlled_by_user(multiuse_invite,user_profile)["stream_ids"]
+        stream_ids = get_multiuse_invite_controlled_by_user(multiuse_invite, user_profile)[
+            "stream_ids"
+        ]
         self.assert_length(stream_ids, 2)
 
     def test_successful_get_open_invitations(self) -> None:
