@@ -798,18 +798,6 @@ export function initialize(): void {
             instance.destroy();
         },
     });
-    tippy.delegate("body", {
-        target: ".view_invitations",
-        delay: LONG_HOVER_DELAY,
-        content: $t({
-            defaultMessage: "View Details",
-        }),
-        placement: "bottom",
-        appendTo: () => document.body,
-        onHidden(instance) {
-            instance.destroy();
-        },
-    });
 
     tippy.delegate("body", {
         target: ".view_invitations",
