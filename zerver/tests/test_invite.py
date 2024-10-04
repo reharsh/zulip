@@ -36,6 +36,8 @@ from zerver.actions.invites import (
     do_get_invites_controlled_by_user,
     do_invite_users,
     do_revoke_multi_use_invite,
+    get_invite_controlled_by_user,
+    get_multiuse_invite_controlled_by_user,
     too_many_recent_realm_invites,
 )
 from zerver.actions.realm_settings import (
@@ -1910,6 +1912,57 @@ class InvitationsTestCase(InviteUserBase):
         self.assert_length(do_get_invites_controlled_by_user(user_profile), 6)
         self.assert_length(do_get_invites_controlled_by_user(hamlet), 2)
         self.assert_length(do_get_invites_controlled_by_user(othello), 1)
+
+    def test_get_invite_controlled_by_user(self) -> None:
+        user_profile = self.example_user("iago")
+
+        streams = [
+            get_stream(stream_name, user_profile.realm) for stream_name in ["Denmark", "Scotland"]
+        ]
+
+        invite_expires_in_minutes = 2 * 24 * 60
+        with self.captureOnCommitCallbacks(execute=True):
+            do_invite_users(
+                user_profile,
+                ["TestOne@zulip.com"],
+                streams,
+                include_realm_default_subscriptions=False,
+                invite_expires_in_minutes=invite_expires_in_minutes,
+            )
+
+        do_create_multiuse_invite_link(
+            user_profile,
+            PreregistrationUser.INVITE_AS["MEMBER"],
+            invite_expires_in_minutes,
+            include_realm_default_subscriptions=False,
+        )
+
+        invite_id = do_get_invites_controlled_by_user(user_profile)[0]["id"]
+        prereg_user = PreregistrationUser.objects.get(id=invite_id)
+        stream_ids = get_invite_controlled_by_user(prereg_user,user_profile)["stream_ids"]
+        self.assert_length(stream_ids, 2)
+        
+    def test_get_multiuse_invite_controlled_by_user(self) -> None:
+        user_profile = self.example_user("iago")
+
+        streams = [
+            get_stream(stream_name, user_profile.realm) for stream_name in ["Denmark", "Scotland"]
+        ]
+
+        invite_expires_in_minutes = 2 * 24 * 60
+
+        do_create_multiuse_invite_link(
+            user_profile,
+            PreregistrationUser.INVITE_AS["MEMBER"],
+            invite_expires_in_minutes,
+            include_realm_default_subscriptions=False,
+            streams=streams
+        )
+
+        invite_id = do_get_invites_controlled_by_user(user_profile)[0]["id"]
+        multiuse_invite = MultiuseInvite.objects.get(id=invite_id)
+        stream_ids = get_multiuse_invite_controlled_by_user(multiuse_invite,user_profile)["stream_ids"]
+        self.assert_length(stream_ids, 2)
 
     def test_successful_get_open_invitations(self) -> None:
         """
