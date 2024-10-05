@@ -2183,6 +2183,19 @@ class InvitationsTestCase(InviteUserBase):
         # Verify that the scheduled email exists.
         ScheduledEmail.objects.get(address__iexact=invitee, type=ScheduledEmail.INVITATION_REMINDER)
 
+        # Call for different realm invitation
+        mit_realm = get_realm("zephyr")
+        prereg_user_error = PreregistrationUser.objects.create(
+            referred_by=self.mit_user("sipbtest"), realm=mit_realm
+        )
+        result = self.client_get("/json/invites/" + str(prereg_user_error.id))
+        self.assert_json_error(result, "No such invitation")
+
+        # Call with incorrect invite id should not return invitation
+        result = self.client_get("/json/invites/" + str(prereg_user.id + 999))
+        self.assert_json_error(result, "No such invitation")
+
+        # Call with correct invite id
         result = self.client_get("/json/invites/" + str(prereg_user.id))
         self.assertEqual(result.status_code, 200)
         self.assert_length(
@@ -2668,6 +2681,12 @@ class MultiuseInviteTest(ZulipTestCase):
             result.json()["invite"]["stream_ids"],
             len(get_slim_realm_default_streams(zulip_realm.id)),
         )
+
+        # Test getting revoked multiuse invite
+        assert multiuse_invite is not None
+        do_revoke_multi_use_invite(multiuse_invite)
+        error_result = self.client_get("/json/invites/multiuse/" + str(multiuse_invite.id))
+        self.assert_json_error(error_result, "Invitation has already been revoked")
 
         # Test non-admins can only get invitations created by them.
         multiuse_invite = MultiuseInvite.objects.create(
