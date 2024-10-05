@@ -1929,42 +1929,23 @@ class InvitationsTestCase(InviteUserBase):
                 include_realm_default_subscriptions=False,
                 invite_expires_in_minutes=invite_expires_in_minutes,
             )
+            do_invite_users(
+                user_profile,
+                ["TestTwo@zulip.com"],
+                include_realm_default_subscriptions=True,
+                streams=[],
+                invite_expires_in_minutes=invite_expires_in_minutes,
+            )
 
-        do_create_multiuse_invite_link(
-            user_profile,
-            PreregistrationUser.INVITE_AS["MEMBER"],
-            invite_expires_in_minutes,
-            include_realm_default_subscriptions=False,
-        )
-
-        invite_id = do_get_invites_controlled_by_user(user_profile)[0]["id"]
-        prereg_user = PreregistrationUser.objects.get(id=invite_id)
-        stream_ids = get_invite_controlled_by_user(prereg_user, user_profile)["stream_ids"]
-        self.assert_length(stream_ids, 2)
-
-    def test_get_multiuse_invite_controlled_by_user(self) -> None:
-        user_profile = self.example_user("iago")
-
-        streams = [
-            get_stream(stream_name, user_profile.realm) for stream_name in ["Denmark", "Scotland"]
-        ]
-
-        invite_expires_in_minutes = 2 * 24 * 60
-
-        do_create_multiuse_invite_link(
-            user_profile,
-            PreregistrationUser.INVITE_AS["MEMBER"],
-            invite_expires_in_minutes,
-            include_realm_default_subscriptions=False,
-            streams=streams,
-        )
-
-        invite_id = do_get_invites_controlled_by_user(user_profile)[0]["id"]
-        multiuse_invite = MultiuseInvite.objects.get(id=invite_id)
-        stream_ids = get_multiuse_invite_controlled_by_user(multiuse_invite, user_profile)[
-            "stream_ids"
-        ]
-        self.assert_length(stream_ids, 2)
+        invite_id_one = do_get_invites_controlled_by_user(user_profile)[0]["id"]
+        prereg_user_one = PreregistrationUser.objects.get(id=invite_id_one)
+        stream_ids_one = get_invite_controlled_by_user(prereg_user_one, user_profile)["stream_ids"]
+        invite_id_two = do_get_invites_controlled_by_user(user_profile)[1]["id"]
+        prereg_user_two = PreregistrationUser.objects.get(id=invite_id_two)
+        stream_ids_two = get_invite_controlled_by_user(prereg_user_two, user_profile)["stream_ids"]
+        default_streams = get_slim_realm_default_streams(user_profile.realm.id)
+        self.assert_length(stream_ids_one, 2)
+        self.assert_length(stream_ids_two, len(default_streams))
 
     def test_successful_get_open_invitations(self) -> None:
         """
@@ -2183,6 +2164,81 @@ class InvitationsTestCase(InviteUserBase):
             lambda: ScheduledEmail.objects.get(
                 address__iexact=invitee, type=ScheduledEmail.INVITATION_REMINDER
             ),
+        )
+
+    def test_get_invite_details(self) -> None:
+        """
+        A GET call to /json/invites/<ID> should get the invite and
+        any scheduled invitation reminder emails.
+        """
+        self.login("iago")
+
+        invitee = "GetMe@zulip.com"
+        zulip_realm = get_realm("zulip")
+        self.assert_json_success(
+            self.invite(invitee, [], realm=zulip_realm, include_realm_default_subscriptions=True)
+        )
+        prereg_user = PreregistrationUser.objects.get(email=invitee)
+
+        # Verify that the scheduled email exists.
+        ScheduledEmail.objects.get(address__iexact=invitee, type=ScheduledEmail.INVITATION_REMINDER)
+
+        result = self.client_get("/json/invites/" + str(prereg_user.id))
+        self.assertEqual(result.status_code, 200)
+        self.assert_length(
+            result.json()["invite"]["stream_ids"],
+            len(get_slim_realm_default_streams(zulip_realm.id)),
+        )
+
+    def test_successful_member_get_invitation(self) -> None:
+        """
+        A GET call from member account to /json/invites/<ID> should get the invite and
+        any scheduled invitation reminder emails.
+        """
+        user_profile = self.example_user("hamlet")
+        self.login_user(user_profile)
+        invitee = "GetMe@zulip.com"
+        zulip_realm = get_realm("zulip")
+        self.assert_json_success(self.invite(invitee, ["Denmark"], realm=zulip_realm))
+
+        # Verify that the scheduled email exists.
+        prereg_user = PreregistrationUser.objects.get(email=invitee, referred_by=user_profile)
+        ScheduledEmail.objects.get(address__iexact=invitee, type=ScheduledEmail.INVITATION_REMINDER)
+
+        # Verify another non-admin can't get invitation
+        result = self.api_get(
+            self.example_user("othello"), "/api/v1/invites/" + str(prereg_user.id)
+        )
+        self.assert_json_error(result, "Must be an organization administrator")
+
+        # Verify member can get invitation
+        result = self.api_get(user_profile, "/api/v1/invites/" + str(prereg_user.id))
+        self.assertEqual(result.status_code, 200)
+        self.assert_length(result.json()["invite"]["stream_ids"], 1)
+
+    def test_get_owner_invitation(self) -> None:
+        self.login("desdemona")
+        owner = self.example_user("desdemona")
+        zulip_realm = get_realm("zulip")
+        invitee = "DeleteMe@zulip.com"
+        self.assert_json_success(
+            self.invite(
+                invitee,
+                [],
+                invite_as=PreregistrationUser.INVITE_AS["REALM_OWNER"],
+                realm=zulip_realm,
+                include_realm_default_subscriptions=True,
+            )
+        )
+        prereg_user = PreregistrationUser.objects.get(email=invitee)
+        result = self.api_get(self.example_user("iago"), "/api/v1/invites/" + str(prereg_user.id))
+        self.assert_json_error(result, "Must be an organization owner")
+
+        result = self.api_get(owner, "/api/v1/invites/" + str(prereg_user.id))
+        self.assert_json_success(result)
+        self.assert_length(
+            result.json()["invite"]["stream_ids"],
+            len(get_slim_realm_default_streams(zulip_realm.id)),
         )
 
     def test_delete_multiuse_invite(self) -> None:
@@ -2533,6 +2589,123 @@ class MultiuseInviteTest(ZulipTestCase):
             return create_confirmation_link(
                 invite, Confirmation.MULTIUSE_INVITE, validity_in_minutes=validity_in_minutes
             )
+
+    def test_get_multiuse_invite_controlled_by_user(self) -> None:
+        user_profile = self.example_user("iago")
+
+        streams = [
+            get_stream(stream_name, user_profile.realm) for stream_name in ["Denmark", "Scotland"]
+        ]
+
+        invite_expires_in_minutes = 2 * 24 * 60
+
+        do_create_multiuse_invite_link(
+            user_profile,
+            PreregistrationUser.INVITE_AS["MEMBER"],
+            invite_expires_in_minutes,
+            include_realm_default_subscriptions=False,
+            streams=streams,
+        )
+        do_create_multiuse_invite_link(
+            user_profile,
+            PreregistrationUser.INVITE_AS["MEMBER"],
+            invite_expires_in_minutes,
+            include_realm_default_subscriptions=True,
+            streams=[],
+        )
+
+        invite_id_one = do_get_invites_controlled_by_user(user_profile)[0]["id"]
+        multiuse_invite_one = MultiuseInvite.objects.get(id=invite_id_one)
+        stream_ids_one = get_multiuse_invite_controlled_by_user(multiuse_invite_one, user_profile)[
+            "stream_ids"
+        ]
+        invite_id_two = do_get_invites_controlled_by_user(user_profile)[1]["id"]
+        multiuse_invite_two = MultiuseInvite.objects.get(id=invite_id_two)
+        stream_ids_two = get_multiuse_invite_controlled_by_user(multiuse_invite_two, user_profile)[
+            "stream_ids"
+        ]
+        default_streams = get_slim_realm_default_streams(user_profile.realm.id)
+        self.assert_length(stream_ids_one, 2)
+        self.assert_length(stream_ids_two, len(default_streams))
+
+    def test_get_multiuse_invite_details(self) -> None:
+        """
+        A GET call to /json/invites/multiuse<ID> should get the
+        multiuse_invite.
+        """
+        self.login("iago")
+
+        zulip_realm = get_realm("zulip")
+        multiuse_invite = MultiuseInvite.objects.create(
+            referred_by=self.example_user("hamlet"), realm=zulip_realm
+        )
+        validity_in_minutes = 2 * 24 * 60
+        create_confirmation_link(
+            multiuse_invite, Confirmation.MULTIUSE_INVITE, validity_in_minutes=validity_in_minutes
+        )
+        result = self.client_get("/json/invites/multiuse/" + str(multiuse_invite.id))
+        self.assertEqual(result.status_code, 200)
+        self.assert_length(
+            result.json()["invite"]["stream_ids"],
+            len(get_slim_realm_default_streams(zulip_realm.id)),
+        )
+        # Test getting owner multiuse_invite.
+        multiuse_invite = MultiuseInvite.objects.create(
+            referred_by=self.example_user("desdemona"),
+            realm=zulip_realm,
+            invited_as=PreregistrationUser.INVITE_AS["REALM_OWNER"],
+        )
+        create_confirmation_link(
+            multiuse_invite, Confirmation.MULTIUSE_INVITE, validity_in_minutes=validity_in_minutes
+        )
+        error_result = self.client_get("/json/invites/multiuse/" + str(multiuse_invite.id))
+        self.assert_json_error(error_result, "Must be an organization owner")
+
+        self.login("desdemona")
+        result = self.client_get("/json/invites/multiuse/" + str(multiuse_invite.id))
+        self.assert_json_success(result)
+        self.assert_length(
+            result.json()["invite"]["stream_ids"],
+            len(get_slim_realm_default_streams(zulip_realm.id)),
+        )
+
+        # Test non-admins can only get invitations created by them.
+        multiuse_invite = MultiuseInvite.objects.create(
+            referred_by=self.example_user("hamlet"), realm=zulip_realm
+        )
+        create_confirmation_link(
+            multiuse_invite, Confirmation.MULTIUSE_INVITE, validity_in_minutes=validity_in_minutes
+        )
+
+        self.login("cordelia")
+        error_result = self.client_get("/json/invites/multiuse/" + str(multiuse_invite.id))
+        self.assert_json_error(error_result, "Must be an organization administrator")
+
+        self.login("hamlet")
+        result = self.client_get("/json/invites/multiuse/" + str(multiuse_invite.id))
+        self.assertEqual(result.status_code, 200)
+        self.assert_length(
+            result.json()["invite"]["stream_ids"],
+            len(get_slim_realm_default_streams(zulip_realm.id)),
+        )
+
+        # Test getting multiuse invite from another realm
+        mit_realm = get_realm("zephyr")
+        multiuse_invite_in_mit = MultiuseInvite.objects.create(
+            referred_by=self.mit_user("sipbtest"), realm=mit_realm
+        )
+        validity_in_minutes = 2 * 24 * 60
+        create_confirmation_link(
+            multiuse_invite_in_mit,
+            Confirmation.MULTIUSE_INVITE,
+            validity_in_minutes=validity_in_minutes,
+        )
+        error_result = self.client_get("/json/invites/multiuse/" + str(multiuse_invite_in_mit.id))
+        self.assert_json_error(error_result, "No such invitation")
+
+        non_existent_id = MultiuseInvite.objects.count() + 9999
+        error_result = self.client_get(f"/json/invites/multiuse/{non_existent_id}")
+        self.assert_json_error(error_result, "No such invitation")
 
     def check_user_able_to_register(self, email: str, invite_link: str) -> None:
         password = "password"
