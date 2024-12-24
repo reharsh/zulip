@@ -962,7 +962,13 @@ export function dispatch_normal_event(event) {
         case "user_group":
             switch (event.op) {
                 case "add": {
+                    // eslint-disable-next-line no-console
+                    console.log(`group event: ${JSON.stringify(event.group)}`)
                     const user_group = user_groups.add(event.group);
+                    // eslint-disable-next-line no-console
+                    console.log(`desc: ${user_group.description}`)
+                    // eslint-disable-next-line no-console
+                    console.log(`rendered: ${user_group.rendered_description}`)
                     if (overlays.groups_open()) {
                         user_group_edit.add_group_to_table(user_group);
                     }
@@ -991,6 +997,8 @@ export function dispatch_normal_event(event) {
                     );
                     break;
                 case "update":
+                    // eslint-disable-next-line no-console
+                    console.log(`update event: ${JSON.stringify(event)}`)
                     user_groups.update(event);
                     user_group_edit.update_group(event);
                     break;

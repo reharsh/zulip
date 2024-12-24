@@ -202,7 +202,8 @@ function get_events({dont_block = false} = {}) {
                 get_events_xhr = undefined;
                 get_events_failures = 0;
                 hide_ui_connection_error();
-
+                // eslint-disable-next-line no-console
+                console.log(`the events: ${JSON.stringify(data.events)}`)
                 get_events_success(data.events);
             } catch (error) {
                 blueslip.error("Failed to handle get_events success", undefined, error);

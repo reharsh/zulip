@@ -47,6 +47,7 @@ class UserGroupDict(TypedDict):
     id: int
     name: str
     description: str
+    rendered_description: str
     members: list[int]
     direct_subgroup_ids: list[int]
     creator_id: int | None
@@ -602,6 +603,7 @@ def user_groups_in_realm_serialized(
             creator_id=creator_id,
             date_created=date_created,
             description=user_group.description,
+            rendered_description=user_group.rendered_description,
             members=direct_member_ids,
             direct_subgroup_ids=direct_subgroup_ids,
             is_system_group=user_group.is_system_group,

@@ -68,6 +68,7 @@ def add_user_group(
     user_profile.realm.ensure_not_on_limited_plan()
     user_profiles = user_ids_to_users(members, user_profile.realm, allow_deactivated=False)
     name = check_user_group_name(name)
+    print(f"adding group: {name} with desc: {description}")
 
     group_settings_map = {}
     request_settings_dict = locals()
@@ -103,6 +104,8 @@ def add_user_group(
             add_subgroups_to_user_group(
                 context.supergroup, context.direct_subgroups, acting_user=user_profile
             )
+
+    print(f"THIS IS THE ENDDDD: {user_group.rendered_description}")
     return json_success(request, data={"group_id": user_group.id})
 
 
@@ -117,6 +120,7 @@ def get_user_groups(
     user_groups = user_groups_in_realm_serialized(
         user_profile.realm, include_deactivated_groups=include_deactivated_groups
     )
+    print(f"getting user groups... {user_groups}")
     return json_success(request, data={"user_groups": user_groups})
 
 
@@ -169,6 +173,9 @@ def edit_user_group(
         do_update_user_group_name(user_group, name, acting_user=user_profile)
 
     if description is not None and description != user_group.description:
+        # if "\n" in description:
+        #     # We don't allow newline characters in group descriptions.
+        #     description = description.replace("\n", " ")
         do_update_user_group_description(user_group, description, acting_user=user_profile)
 
     request_settings_dict = locals()
@@ -207,7 +214,7 @@ def edit_user_group(
                 old_setting_api_value=current_setting_api_value,
                 acting_user=user_profile,
             )
-
+    print(f"group updatedddd!!!!")
     return json_success(request)
 
 

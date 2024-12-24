@@ -8,6 +8,7 @@ from django.utils.timezone import now as timezone_now
 from django.utils.translation import gettext as _
 
 from zerver.lib.exceptions import JsonableError
+from zerver.lib.markdown import markdown_convert
 from zerver.lib.timestamp import datetime_to_timestamp
 from zerver.lib.types import AnonymousSettingGroupDict
 from zerver.lib.user_groups import (
@@ -48,10 +49,13 @@ def create_user_group_in_database(
     group_settings_map: Mapping[str, UserGroup] = {},
     is_system_group: bool = False,
 ) -> NamedUserGroup:
+    if description:
+        rendered_description = render_group_description(description,realm)
     user_group = NamedUserGroup(
         name=name,
         realm=realm,
         description=description,
+        rendered_description=rendered_description,
         is_system_group=is_system_group,
         realm_for_sharding=realm,
         creator=acting_user,
@@ -166,6 +170,8 @@ def promote_new_full_members() -> None:
     for realm in Realm.objects.filter(deactivated=False).exclude(waiting_period_threshold=0):
         update_users_in_full_members_system_group(realm, acting_user=None)
 
+def render_group_description(text: str, realm: Realm) -> str:
+    return markdown_convert(text, message_realm=realm, no_previews=True).rendered_content
 
 def do_send_create_user_group_event(
     user_group: NamedUserGroup,
@@ -191,6 +197,7 @@ def do_send_create_user_group_event(
             date_created=date_created,
             members=[member.id for member in members],
             description=user_group.description,
+            rendered_description=user_group.rendered_description,
             id=user_group.id,
             is_system_group=user_group.is_system_group,
             direct_subgroup_ids=[direct_subgroup.id for direct_subgroup in direct_subgroups],
@@ -268,7 +275,9 @@ def do_update_user_group_description(
 ) -> None:
     old_value = user_group.description
     user_group.description = description
-    user_group.save(update_fields=["description"])
+    user_group.rendered_description = render_group_description(description,user_group.realm)
+    user_group.save(update_fields=["description","rendered_description"])
+    print(f"new desc: {user_group.rendered_description}")
     RealmAuditLog.objects.create(
         realm=user_group.realm,
         modified_user_group=user_group,
@@ -278,9 +287,10 @@ def do_update_user_group_description(
         extra_data={
             RealmAuditLog.OLD_VALUE: old_value,
             RealmAuditLog.NEW_VALUE: description,
+            "property": "description",
         },
     )
-    do_send_user_group_update_event(user_group, dict(description=description))
+    do_send_user_group_update_event(user_group, dict(description=description,rendered_description=user_group.rendered_description))
 
 
 def do_send_user_group_members_update_event(

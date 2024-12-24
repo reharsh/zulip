@@ -43,8 +43,11 @@ init();
 
 export function add(user_group_raw: UserGroupRaw): UserGroup {
     // Reformat the user group members structure to be a set.
+    // eslint-disable-next-line no-console
+    console.log(`descccc: ${user_group_raw.rendered_description}`)
     const user_group = {
         description: user_group_raw.description,
+        rendered_description: user_group_raw.rendered_description,
         id: user_group_raw.id,
         name: user_group_raw.name,
         creator_id: user_group_raw.creator_id,
@@ -90,8 +93,9 @@ export function update(event: UserGroupUpdateEvent): void {
         group.name = event.data.name;
         user_group_name_dict.set(group.name, group);
     }
-    if (event.data.description !== undefined) {
+    if (event.data.description !== undefined && event.data.rendered_description !== undefined) {
         group.description = event.data.description;
+        group.rendered_description = event.data.rendered_description;
         user_group_name_dict.delete(group.name);
         user_group_name_dict.set(group.name, group);
     }
@@ -295,6 +299,8 @@ export function is_setting_group_empty(setting_group: GroupSettingValue): boolea
 export function get_user_groups_of_user(user_id: number): UserGroup[] {
     const user_groups_realm = get_realm_user_groups();
     const groups_of_user = user_groups_realm.filter((group) => is_user_in_group(group.id, user_id));
+    // eslint-disable-next-line no-console
+    console.log(`this is groups list data: ${JSON.stringify(groups_of_user)}`)
     return groups_of_user;
 }
 

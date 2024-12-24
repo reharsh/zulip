@@ -1890,6 +1890,7 @@ def do_events_register(
         include_deactivated_groups=include_deactivated_groups,
     )
 
+
     post_process_state(user_profile, ret, notification_settings_null)
 
     if len(events) > 0:

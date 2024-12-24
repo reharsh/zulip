@@ -9,6 +9,7 @@ import render_group_info_banner from "../templates/modal_banner/user_group_info_
 import render_browse_user_groups_list_item from "../templates/user_group_settings/browse_user_groups_list_item.hbs";
 import render_cannot_deactivate_group_banner from "../templates/user_group_settings/cannot_deactivate_group_banner.hbs";
 import render_change_user_group_info_modal from "../templates/user_group_settings/change_user_group_info_modal.hbs";
+import render_user_group_description from "../templates/user_group_settings/user_group_description.hbs"
 import render_user_group_membership_status from "../templates/user_group_settings/user_group_membership_status.hbs";
 import render_user_group_settings from "../templates/user_group_settings/user_group_settings.hbs";
 import render_user_group_settings_overlay from "../templates/user_group_settings/user_group_settings_overlay.hbs";
@@ -27,6 +28,7 @@ import * as ListWidget from "./list_widget.ts";
 import * as loading from "./loading.ts";
 import * as overlays from "./overlays.ts";
 import * as people from "./people.ts";
+import { postprocess_content } from "./postprocess_content.ts";
 import * as scroll_util from "./scroll_util.ts";
 import * as settings_components from "./settings_components.ts";
 import {group_setting_name_schema} from "./settings_components.ts";
@@ -331,6 +333,8 @@ function update_display_checkmark_on_group_edit(group: UserGroup): void {
             people.my_current_user_id(),
         );
         const associated_subgroup_names = user_groups.format_group_list(associated_subgroups);
+        // eslint-disable-next-line no-console
+        console.log("hola 1")
         const item_render_data = {
             ...item,
             is_member,
@@ -532,6 +536,8 @@ function update_membership_status_text(group: UserGroup): void {
 }
 
 export function show_settings_for(group: UserGroup): void {
+    // eslint-disable-next-line no-console
+    console.log(`------> THIS GROUP: ${JSON.stringify(group)}`)
     const html = render_user_group_settings({
         group,
         date_created_string: timerender.get_localized_date_or_time_for_format(
@@ -814,7 +820,14 @@ export function update_group(event: UserGroupUpdateEvent): void {
     }
 
     if (event.data.description !== undefined) {
-        $group_row.find(".description").text(group.description);
+        // eslint-disable-next-line no-console
+        console.log(`reached here!!! ${group.rendered_description}`)
+        const $edit_container = get_edit_container(group)
+        const html = render_user_group_description({
+            rendered_description: postprocess_content(group.rendered_description)
+        })
+        $edit_container.find(".group-description-wrapper").html(html)
+        $group_row.find(".description").html(html)
     }
 
     if (event.data.deactivated) {
@@ -1096,7 +1109,7 @@ export function setup_page(callback: () => void): void {
         group_list_widget = ListWidget.create($container, empty_user_group_list, {
             name: "user-groups-overlay",
             get_item: ListWidget.default_get_item,
-            modifier_html(item) {
+            modifier_html(item) { 
                 const is_member = user_groups.is_user_in_group(
                     item.id,
                     people.my_current_user_id(),
@@ -1121,6 +1134,8 @@ export function setup_page(callback: () => void): void {
                     can_join,
                     can_leave,
                 };
+                // eslint-disable-next-line no-console
+                console.log(`item render data: ${JSON.stringify(item_render_data)}`)
                 return render_browse_user_groups_list_item(item_render_data);
             },
             filter: {
@@ -1326,8 +1341,9 @@ export function initialize(): void {
         });
     });
 
-    function save_group_info(this: HTMLElement): void {
-        const group = get_user_group_for_target(this);
+    function save_group_info(e: JQuery.ClickEvent): void {
+        assert(e.currentTarget instanceof HTMLElement);
+        const group = get_user_group_for_target(e.currentTarget);
         assert(group !== undefined);
         const url = `/json/user_groups/${group.id}`;
         let name;
